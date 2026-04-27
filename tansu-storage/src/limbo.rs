@@ -2922,7 +2922,7 @@ impl Storage for Engine {
                     .await
                     .inspect_err(|err| error!(?err, group_id))?
                 {
-                    let value = row
+                    let current = row
                         .get_value(1)
                         .map_err(Error::from)
                         .and_then(|value| {
@@ -2931,11 +2931,11 @@ impl Storage for Engine {
                                 .cloned()
                                 .ok_or(Error::UnexpectedValue(value.clone()))
                         })
-                        .map(serde_json::Value::from)
+                        .and_then(|s| {
+                            serde_json::from_str::<GroupDetail>(&s).map_err(Into::into)
+                        })
+                        .inspect(|current| debug!(?current))
                         .inspect_err(|err| error!(?err, group_id))?;
-
-                    let current = serde_json::from_value::<GroupDetail>(value)
-                        .inspect(|current| debug!(?current))?;
 
                     results.push(NamedGroupDetail::found(group_id.into(), current));
                 } else {
@@ -3050,15 +3050,18 @@ impl Storage for Engine {
                 })
                 .inspect(|version| debug!(?version))?;
 
-            let value = row.get_value(1).map_err(Error::from).and_then(|value| {
-                value
-                    .as_text()
-                    .map(|v| v.as_str())
-                    .ok_or(Error::UnexpectedValue(value.clone()))
-                    .map(serde_json::Value::from)
-            })?;
-
-            let current = serde_json::from_value::<GroupDetail>(value)
+            let current = row
+                .get_value(1)
+                .map_err(Error::from)
+                .and_then(|value| {
+                    value
+                        .as_text()
+                        .map(|v| v.as_str())
+                        .ok_or(Error::UnexpectedValue(value.clone()))
+                        .and_then(|s| {
+                            serde_json::from_str::<GroupDetail>(s).map_err(Into::into)
+                        })
+                })
                 .inspect(|current| debug!(?current))
                 .map(Box::new)?;
 
