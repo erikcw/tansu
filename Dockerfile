@@ -34,7 +34,7 @@ cp -v LICENSE /image
 cp -rv /etc/ssl /image/etc
 EOF
 
-FROM scratch
+FROM alpine:3.20
 COPY --from=builder /image /
 ENV TMP=/tmp
 ENTRYPOINT ["/tansu"]
